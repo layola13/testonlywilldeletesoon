@@ -164,6 +164,41 @@ app.get('/check', (req, res) => {
     `);
 });
 
+app.post('/compareAnalyze', upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ status: 400, error: "No image file provided" });
+        }
+
+        const [geminiResult, mixtralResult] = await Promise.all([
+            client.analyzeImage(req.file.buffer, ModelType.GEMINI)
+                .catch(error => ({
+                    production_date: null,
+                    expiration_date: null,
+                    production_id: null,
+                    additional_info: null
+                })),
+            client.analyzeImage(req.file.buffer, ModelType.MIXTRAL)
+                .catch(error => ({
+                    production_date: null,
+                    expiration_date: null,
+                    production_id: null,
+                    additional_info: null
+                }))
+        ]);
+
+        res.json({
+            status: 200,
+            datas: [geminiResult, mixtralResult]
+        });
+    } catch (error) {
+        console.error("Comparison analysis error:", error);
+        res.status(500).json({
+            status: 500,
+            error: 'unknown error,please contact the administrator'
+        });
+    }
+});
 // Add status endpoint
 app.get('/status', (req, res) => {
     res.json({
