@@ -9,7 +9,7 @@ dotenv.config();
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
-const port = 9080;
+const port = 9081;
 
 // Model type enum
 const ModelType = {
