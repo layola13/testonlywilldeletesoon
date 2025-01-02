@@ -228,6 +228,7 @@ app.get('/status', (req, res) => {
         status: "running",
         models: "model",
         version: "1.0.0",
+        copyright: "sonygod",
         requests: {
             f1: requestCounter.analyze,
             f2: requestCounter.compareAnalyze,
