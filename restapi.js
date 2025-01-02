@@ -23,6 +23,12 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 const port = 9081;
 
+// Add after imports
+let requestCounter = {
+    analyze: 0,
+    compareAnalyze: 0,
+    total: 0
+};
 // Model type enum
 const ModelType = {
     GEMINI: 'GEMINI',
@@ -129,6 +135,8 @@ class ImageAnalysisClient {
 const client = new ImageAnalysisClient();
 
 app.post('/analyze', limiter,upload.single('image'), async (req, res) => {
+    requestCounter.analyze++;
+    requestCounter.total++;
     try {
         if (!req.file) {
             return res.status(400).json({ status: 400, error: "No image file provided" });
@@ -177,6 +185,8 @@ app.get('/check', (req, res) => {
 });
 
 app.post('/compareAnalyze',limiter, upload.single('image'), async (req, res) => {
+    requestCounter.analyze++;
+    requestCounter.total++;
     try {
         if (!req.file) {
             return res.status(400).json({ status: 400, error: "No image file provided" });
@@ -212,11 +222,17 @@ app.post('/compareAnalyze',limiter, upload.single('image'), async (req, res) => 
     }
 });
 // Add status endpoint
+// Update status endpoint
 app.get('/status', (req, res) => {
     res.json({
         status: "running",
         models: "model",
-        version: "1.0.0"
+        version: "1.0.0",
+        requests: {
+            f1: requestCounter.analyze,
+            f2: requestCounter.compareAnalyze,
+            total: requestCounter.total
+        }
     });
 });
 
