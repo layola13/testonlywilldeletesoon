@@ -4,8 +4,20 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Mistral } from "@mistralai/mistralai";
 import dotenv from "dotenv";
 import sharp from 'sharp';
-
+import rateLimit from 'express-rate-limit';
 dotenv.config();
+
+// Configure rate limiter
+const limiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 1, // 1 request per window
+    message: {
+        status: 429,
+        error: "Too many requests, please try again after 1 minute"
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -116,7 +128,7 @@ class ImageAnalysisClient {
 
 const client = new ImageAnalysisClient();
 
-app.post('/analyze', upload.single('image'), async (req, res) => {
+app.post('/analyze', limiter,upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ status: 400, error: "No image file provided" });
@@ -164,7 +176,7 @@ app.get('/check', (req, res) => {
     `);
 });
 
-app.post('/compareAnalyze', upload.single('image'), async (req, res) => {
+app.post('/compareAnalyze',limiter, upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ status: 400, error: "No image file provided" });
