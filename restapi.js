@@ -109,34 +109,49 @@ class ImageAnalysisClient {
     }
 
     async analyzeWithMixtral(base64Image, prompt) {
-        const result = await this.mistral.chat.stream({
-            model: "pixtral-large-latest",
-            messages: [
-                {
-                    role: "user",
-                    content: [
-                        { type: "text", text: prompt },
-                        {
-                            type: "image_url",
-                            imageUrl: `data:image/jpeg;base64,${base64Image}`,
-                        },
-                    ]
-                }
-            ],
-            max_tokens: 1024,
-            temperature: 0.8,
-        });
-
-        let response = "";
-        for await (const chunk of result) {
-            response += chunk.data.choices[0].delta.content;
+        try {
+            const result = await this.mistral.chat.stream({
+                model: "pixtral-large-latest",
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "text", text: prompt },
+                            {
+                                type: "image_url",
+                                imageUrl: `data:image/jpeg;base64,${base64Image}`,
+                            },
+                        ]
+                    }
+                ],
+                max_tokens: 1024,
+                temperature: 0.8,
+            });
+    
+            let response = "";
+            for await (const chunk of result) {
+                response += chunk.data.choices[0].delta.content;
+            }
+    
+            const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[1]);
+            }
+            return {
+                production_date: null,
+                expiration_date: null,
+                production_id: null,
+                additional_info: "Error: No valid JSON found in Mixtral response"
+            };
+        } catch (error) {
+            console.error("Mixtral API error:", error);
+            return {
+                production_date: null,
+                expiration_date: null,
+                production_id: null,
+                additional_info: `Mixtral Error: ${error.message}`
+            };
         }
-
-        const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[1]);
-        }
-        throw new Error("No JSON content found in Mixtral response");
     }
 
     async analyzeWithGeminiThinking(base64Image, prompt) {
