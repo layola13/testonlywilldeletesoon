@@ -70,7 +70,7 @@ class ImageAnalysisClient {
     Rules:
     - Only extract dates that are explicitly labeled or clearly marked
     - If no clear production date or manufacturing date is found, set production_date to null
-    - If no clear expiration date or 保质期 is found, set expiration_date to null
+    - If no clear expiration date or 保质期 or 质期 is found, set expiration_date to null
     - Do not make assumptions or guess dates EXCEPT:
       * If only one date is found with no label:
         - If date is future (after ${new Date().toISOString().split('T')[0]}), set as expiration_date
