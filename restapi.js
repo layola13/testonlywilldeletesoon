@@ -32,7 +32,8 @@ let requestCounter = {
 // Model type enum
 const ModelType = {
     GEMINI: 'GEMINI',
-    MIXTRAL: 'MIXTRAL'
+    MIXTRAL: 'MIXTRAL',
+    GEMINI_THINKING: 'GEMINI_THINKING'
 };
 
 class ImageAnalysisClient {
@@ -42,14 +43,19 @@ class ImageAnalysisClient {
 
     init() {
         // Initialize Gemini
-        const geminiApiKey = process.env.API_KEY6;
-        if (!geminiApiKey) throw new Error("Gemini API_KEY not found");
-        this.genAI = new GoogleGenerativeAI(geminiApiKey);
-
-        // Initialize Mixtral
-        const mixtralApiKey = process.env.API_KEY_MIXTRAL12;
-        if (!mixtralApiKey) throw new Error("Mixtral API_KEY not found");
-        this.mistral = new Mistral({ apiKey: mixtralApiKey });
+         // Initialize Gemini models
+         const geminiApiKey = process.env.API_KEY6;
+         const geminiThinkingApiKey = process.env.API_KEY7;
+         if (!geminiApiKey) throw new Error("Gemini API_KEY not found");
+         if (!geminiThinkingApiKey) throw new Error("Gemini Thinking API_KEY not found");
+         
+         this.genAI = new GoogleGenerativeAI(geminiApiKey);
+         this.genAIThinking = new GoogleGenerativeAI(geminiThinkingApiKey);
+ 
+         // Initialize Mixtral
+         const mixtralApiKey = process.env.API_KEY_MIXTRAL12;
+         if (!mixtralApiKey) throw new Error("Mixtral API_KEY not found");
+         this.mistral = new Mistral({ apiKey: mixtralApiKey });
     }
 
     async analyzeImage(imageBuffer, modelType) {
@@ -71,6 +77,8 @@ class ImageAnalysisClient {
         try {
             if (modelType === ModelType.GEMINI) {
                 return await this.analyzeWithGemini(base64Image, prompt);
+            } else if (modelType === ModelType.GEMINI_THINKING) {
+                return await this.analyzeWithGeminiThinking(base64Image, prompt);
             } else {
                 return await this.analyzeWithMixtral(base64Image, prompt);
             }
@@ -130,6 +138,26 @@ class ImageAnalysisClient {
         }
         throw new Error("No JSON content found in Mixtral response");
     }
+
+    async analyzeWithGeminiThinking(base64Image, prompt) {
+        const model = this.genAIThinking.getGenerativeModel({ model: "gemini-2.0-flash-thinking-exp-1219" });
+        const result = await model.generateContent([
+            { text: prompt },
+            {
+                inlineData: {
+                    data: base64Image,
+                    mimeType: "image/jpeg"
+                }
+            }
+        ]);
+
+        const text = result.response.text();
+        const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[1]);
+        }
+        throw new Error("No JSON content found in Gemini Thinking response");
+    }
 }
 
 const client = new ImageAnalysisClient();
@@ -157,7 +185,7 @@ app.post('/analyze', limiter,upload.single('image'), async (req, res) => {
 
 
 // Add static HTML content
-app.get('/check', (req, res) => {
+app.get('/check',limiter, (req, res) => {
     res.send(`
         <html>
             <body>
@@ -175,6 +203,7 @@ app.get('/check', (req, res) => {
                         <select name="model" required>
                             <option value="GEMINI">GEMINI</option>
                             <option value="MIXTRAL">MIXTRAL</option>
+                            <option value="GEMINI_THINKING">GEMINI THINKING</option>
                         </select>
                     </p>
                     <input type="submit" value="Analyze">
@@ -185,14 +214,14 @@ app.get('/check', (req, res) => {
 });
 
 app.post('/compareAnalyze',limiter, upload.single('image'), async (req, res) => {
-    requestCounter.analyze++;
+    requestCounter.compareAnalyze++;
     requestCounter.total++;
     try {
         if (!req.file) {
             return res.status(400).json({ status: 400, error: "No image file provided" });
         }
 
-        const [geminiResult, mixtralResult] = await Promise.all([
+        const [geminiResult, mixtralResult, geminiThinkingResult] = await Promise.all([
             client.analyzeImage(req.file.buffer, ModelType.GEMINI)
                 .catch(error => ({
                     production_date: null,
@@ -206,18 +235,25 @@ app.post('/compareAnalyze',limiter, upload.single('image'), async (req, res) => 
                     expiration_date: null,
                     production_id: null,
                     additional_info: null
+                })),
+            client.analyzeImage(req.file.buffer, ModelType.GEMINI_THINKING)
+                .catch(error => ({
+                    production_date: null,
+                    expiration_date: null,
+                    production_id: null,
+                    additional_info: null
                 }))
         ]);
 
         res.json({
             status: 200,
-            datas: [geminiResult, mixtralResult]
+            datas: [geminiResult, mixtralResult, geminiThinkingResult]
         });
     } catch (error) {
         console.error("Comparison analysis error:", error);
         res.status(500).json({
             status: 500,
-            error: 'unknown error,please contact the administrator'
+            error: 'Unknown error, please contact the administrator'
         });
     }
 });
