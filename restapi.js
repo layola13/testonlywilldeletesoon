@@ -45,7 +45,7 @@ class ImageAnalysisClient {
         // Initialize Gemini
          // Initialize Gemini models
          const geminiApiKey = process.env.API_KEY6;
-         const geminiThinkingApiKey = process.env.API_KEY7;
+         const geminiThinkingApiKey = process.env.API_KEY5;
          if (!geminiApiKey) throw new Error("Gemini API_KEY not found");
          if (!geminiThinkingApiKey) throw new Error("Gemini Thinking API_KEY not found");
          
