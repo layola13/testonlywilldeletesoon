@@ -10,7 +10,7 @@ dotenv.config();
 // Configure rate limiter
 const limiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 1, // 1 request per window
+    max: 10, // 1 request per window
     message: {
         status: 429,
         error: "Too many requests, please try again after 1 minute"
