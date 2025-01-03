@@ -67,23 +67,43 @@ class ImageAnalysisClient {
 
         const prompt = `Analyze the image for production date and expiration date. Return in JSON format.
 
-        Rules:
-        - Only extract dates that are explicitly labeled or clearly marked
-        - If no clear production date or manufacturing date is found, set production_date to null
-        - If no clear expiration date or 保质期 is found, set expiration_date to null
-        - Do not make assumptions or guess dates
-        - Date format must be YYYY.MM.DD when found
-        - Production date and expiration date cannot be the same day
-        
-        Example response:
-        {
-            "production_date": "2024.08.20",    // null if not clearly marked
-            "expiration_date": "2026.08.20",    // null if not clearly marked
-            "production_id": "L233EEV",         // null if not found
-            "additional_info": "CDNK25012111170001"  // null if no additional info
-        }
-        
-        Important: Return null for any field where the information is not explicitly visible in the image.`;
+    Rules:
+    - Only extract dates that are explicitly labeled or clearly marked
+    - If no clear production date or manufacturing date is found, set production_date to null
+    - If no clear expiration date or 保质期 is found, set expiration_date to null
+    - Do not make assumptions or guess dates EXCEPT:
+      * If only one date is found with no label:
+        - If date is future (after ${new Date().toISOString().split('T')[0]}), set as expiration_date
+        - If date is past, set as production_date
+    - Date format must be YYYY.MM.DD when found
+    - Production date and expiration date cannot be the same day
+    
+    Example responses:
+    Case 1 - Labeled dates:
+    {
+        "production_date": "2024.08.20",    
+        "expiration_date": "2026.08.20",    
+        "production_id": null,
+        "additional_info": null
+    }
+
+    Case 2 - Single unlabeled future date:
+    {
+        "production_date": null,
+        "expiration_date": "2025.04.01",    // Future date assumed as expiration
+        "production_id": null,
+        "additional_info": "Single unlabeled date found"
+    }
+
+    Case 3 - Single unlabeled past date:
+    {
+        "production_date": "2023.04.01",    // Past date assumed as production
+        "expiration_date": null,
+        "production_id": null,
+        "additional_info": "Single unlabeled date found"
+    }
+    
+    Important: Return null for any field where the information is not explicitly visible in the image.`;
 
         try {
             if (modelType === ModelType.GEMINI) {
