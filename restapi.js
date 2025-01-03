@@ -61,7 +61,7 @@ class ImageAnalysisClient {
     async analyzeImage(imageBuffer, modelType) {
         const processedImageBuffer = await sharp(imageBuffer)
             .grayscale()
-            .jpeg({ quality: 30, progressive: true })
+            .jpeg({ quality: 100, progressive: true })
             .toBuffer();
         const base64Image = processedImageBuffer.toString('base64');
 
