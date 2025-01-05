@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { Mistral } from "@mistralai/mistralai";
 import dotenv from "dotenv";
 import sharp from 'sharp';
