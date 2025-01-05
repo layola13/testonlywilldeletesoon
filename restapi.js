@@ -215,7 +215,7 @@ class ImageAnalysisClient {
                 
                 const chat = model.startChat({
                     generationConfig: {
-                        maxOutputTokens: 1024*1024,
+                        maxOutputTokens: 8192,
                         temperature: 1,
                     },
                     safetySettings: [
