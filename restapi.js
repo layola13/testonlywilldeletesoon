@@ -210,7 +210,7 @@ class ImageAnalysisClient {
         try {
             if (modelType === ModelType.GEMINI || modelType === ModelType.GEMINI_THINKING) {
                 const genAI = modelType === ModelType.GEMINI ? this.genAI : this.genAIThinking;
-                const modelName = modelType === ModelType.GEMINI ? "gemini-1.5-flash-002" : "gemini-2.0-flash-thinking-exp-1219";
+                const modelName = modelType === ModelType.GEMINI ? "gemini-2.0-flash-exp" : "gemini-2.0-flash-thinking-exp-1219";
                 const model = genAI.getGenerativeModel({ model: modelName });
                 
                 const chat = model.startChat({
