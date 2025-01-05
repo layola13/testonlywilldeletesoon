@@ -204,6 +204,58 @@ class ImageAnalysisClient {
         }
         throw new Error("No JSON content found in Gemini Thinking response");
     }
+
+    async ask(prompt, modelType) {
+        try {
+            if (modelType === ModelType.GEMINI || modelType === ModelType.GEMINI_THINKING) {
+                const genAI = modelType === ModelType.GEMINI ? this.genAI : this.genAIThinking;
+                const modelName = modelType === ModelType.GEMINI ? "gemini-1.5-flash-002" : "gemini-2.0-flash-thinking-exp-1219";
+                const model = genAI.getGenerativeModel({ model: modelName });
+                
+                const chat = model.startChat({
+                    generationConfig: {
+                        maxOutputTokens: 1024*1024,
+                        temperature: 1,
+                    },
+                    safetySettings: [
+                        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                    ]
+                });
+
+                let totalResponse = "";
+                const result = await chat.sendMessageStream(prompt);
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
+                    totalResponse += chunkText;
+                }
+                return { response: totalResponse };
+            } else {
+                // Mixtral handling
+                const result = await this.mistral.chat.stream({
+                    model: "mistral-large-latest",
+                    messages: [{ role: "user", content: prompt }],
+                    max_tokens: 1024*128,
+                    temperature: 0.8,
+                });
+                
+                let response = "";
+                for await (const chunk of result) {
+                    response += chunk.data.choices[0].delta.content;
+                }
+                return { response };
+            }
+        } catch (error) {
+            if (error.toString().includes("Too Many Requests") || 
+                error.toString().includes("Please try again later")) {
+                throw new Error("Rate limit exceeded, please try again later");
+            }
+            console.error(`Error in ${modelType} ask:`, error);
+            throw error;
+        }
+    }
 }
 
 const client = new ImageAnalysisClient();
@@ -230,19 +282,20 @@ app.post('/analyze', limiter,upload.single('image'), async (req, res) => {
 });
 
 
-// Add static HTML content
-app.get('/check',limiter, (req, res) => {
+// Update HTML form
+app.get('/check', limiter, (req, res) => {
     res.send(`
         <html>
             <body>
-                <h1>Image Analysis API</h1>
+                <h1>AI API Service</h1>
                 <h2>API Endpoints:</h2>
                 <ul>
                     <li>POST /analyze - Upload image for analysis</li>
+                    <li>POST /ask - Ask AI a question</li>
                     <li>GET /status - Check API status</li>
                 </ul>
                 
-                <h2>Test Form:</h2>
+                <h2>Image Analysis Form:</h2>
                 <form action="/analyze" method="post" enctype="multipart/form-data">
                     <p>Select image file: <input type="file" name="image" accept="image/*" required></p>
                     <p>Select model: 
@@ -254,6 +307,37 @@ app.get('/check',limiter, (req, res) => {
                     </p>
                     <input type="submit" value="Analyze">
                 </form>
+
+                <h2>Ask AI Form:</h2>
+                <form id="askForm">
+                    <p>Question: <input type="text" id="prompt" required style="width:300px"></p>
+                    <p>Select model: 
+                        <select id="model" required>
+                            <option value="GEMINI">GEMINI</option>
+                            <option value="MIXTRAL">MIXTRAL</option>
+                            <option value="GEMINI_THINKING">GEMINI THINKING</option>
+                        </select>
+                    </p>
+                    <button type="submit">Ask</button>
+                    <pre id="result"></pre>
+                </form>
+
+                <script>
+                document.getElementById('askForm').onsubmit = async (e) => {
+                    e.preventDefault();
+                    const response = await fetch('/ask', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            prompt: document.getElementById('prompt').value,
+                            model: document.getElementById('model').value
+                        })
+                    });
+                    const data = await response.json();
+                    document.getElementById('result').textContent = 
+                        JSON.stringify(data, null, 2);
+                };
+                </script>
             </body>
         </html>
     `);
@@ -317,6 +401,34 @@ app.get('/status', (req, res) => {
             total: requestCounter.total
         }
     });
+});
+
+app.post('/ask', limiter, express.json(), async (req, res) => {
+    requestCounter.total++;
+    try {
+        const { prompt, model } = req.body;
+        
+        if (!prompt) {
+            return res.status(400).json({ 
+                status: 400, 
+                error: "No prompt provided" 
+            });
+        }
+
+        const modelType = model?.toUpperCase();
+        if (!ModelType[modelType]) {
+            return res.status(400).json({ 
+                status: 400, 
+                error: "Invalid model type. Use GEMINI, MIXTRAL, or GEMINI_THINKING" 
+            });
+        }
+
+        const result = await client.ask(prompt, modelType);
+        res.json({ status: 200, data: result });
+    } catch (error) {
+        console.error("Ask error:", error);
+        res.status(500).json({ status: 500, error: error.message });
+    }
 });
 
 // Change server binding
