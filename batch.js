@@ -87,7 +87,9 @@ Return as a JSON array. For any field that cannot be determined, use null.`;
             let response = "";
             const result = await chat.sendMessageStream(prompt);
             for await (const chunk of result.stream) {
-                response += chunk.text();
+                const chunkText = chunk.text();
+                process.stdout.write(chunkText);
+                totalResponse += chunkText;
             }
 
             const jsonMatch = response.match(/\[[\s\S]*\]/);
