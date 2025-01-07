@@ -10,7 +10,7 @@ class DictionaryProcessor {
         const apiKey = process.env.API_KEY6;
         if (!apiKey) throw new Error("Gemini API_KEY not found");
         this.genAI = new GoogleGenerativeAI(apiKey);
-        this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
+        this.model = this.genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
     }
 
     async sleep(min, max) {
