@@ -19,7 +19,7 @@ class DictionaryProcessor {
     }
 
     async queryGemini(words) {
-        const prompt = `For each word in the following list, provide Chinese translation and details in JSON format:
+        const prompt = `For each word in the following list, provide Chinese translation, details and example sentences in JSON format:
 ${words.join(', ')}
 
 Required format for each word:
@@ -29,7 +29,17 @@ Required format for each word:
     "translation": "例子",
     "description": "详细介绍(100字以内)",
     "synonyms": ["similar1", "similar2"],
-    "antonyms": ["opposite1", "opposite2"]
+    "antonyms": ["opposite1", "opposite2"],
+    "examples": [
+        {
+            "en": "This is a good example of modern architecture.",
+            "zh": "这是现代建筑的一个好例子。"
+        },
+        {
+            "en": "Let me give you an example.",
+            "zh": "让我给你举个例子。"
+        }
+    ]
 }
 
 Special handling:
@@ -45,17 +55,17 @@ Example special cases:
     "translation": "运行时",
     "description": "程序运行期间的时间段，也指程序在运行时的环境",
     "synonyms": ["execution time", "running time"],
-    "antonyms": ["compile time", "design time"]
-}
-
-{
-    "word": "progam",
-    "suggested": "program",
-    "phonetic": "/ˈproʊˌɡræm/",
-    "translation": "程序",
-    "description": "发现可能的拼写错误，已更正为'program'并提供其翻译",
-    "synonyms": ["application", "software"],
-    "antonyms": ["hardware", "equipment"]
+    "antonyms": ["compile time", "design time"],
+    "examples": [
+        {
+            "en": "The program has a runtime error.",
+            "zh": "这个程序有一个运行时错误。"
+        },
+        {
+            "en": "The runtime environment must be configured correctly.",
+            "zh": "运行时环境必须正确配置。"
+        }
+    ]
 }
 
 Return as a JSON array. For any field that cannot be determined, use null.`;
