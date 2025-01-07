@@ -115,10 +115,11 @@ Return as a JSON array. For any field that cannot be determined, use null.`;
                 .filter(n => !isNaN(n));
             const startIndex = processedIndices.length ? Math.max(...processedIndices) + 100 : 0;
     
+            const size=50;
             // Process remaining chunks
-            for (let i = startIndex; i < words.length; i += 100) {
-                const chunk = words.slice(i, i + 100);
-                console.log(`Processing chunk ${i/100 + 1}, words ${i}-${i + chunk.length}`);
+            for (let i = startIndex; i < words.length; i += size) {
+                const chunk = words.slice(i, i + size);
+                console.log(`Processing chunk ${i/size + 1}, words ${i}-${i + chunk.length}`);
                 
                 try {
                     const results = await this.queryGemini(chunk);
@@ -134,7 +135,7 @@ Return as a JSON array. For any field that cannot be determined, use null.`;
                     // Random delay between requests
                     await this.sleep(1, 3);
                 } catch (error) {
-                    console.error(`Error processing chunk ${i/100 + 1}:`, error);
+                    console.error(`Error processing chunk ${i/size + 1}:`, error);
                     continue; // Skip to next chunk on error
                 }
             }
