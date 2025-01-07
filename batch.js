@@ -25,13 +25,40 @@ ${words.join(', ')}
 Required format for each word:
 {
     "word": "example",
+    "phonetic": "/ɪɡˈzæmpəl/",
     "translation": "例子",
     "description": "详细介绍(100字以内)",
     "synonyms": ["similar1", "similar2"],
     "antonyms": ["opposite1", "opposite2"]
 }
 
-Return as a JSON array.`;
+Special handling:
+1. If word is in ALL CAPS: Try to find the common-case version
+2. If word appears misspelled: Suggest the closest correct word
+3. If word cannot be directly translated: Provide closest equivalent
+
+Example special cases:
+{
+    "word": "RUNTIME",
+    "suggested": "runtime",
+    "phonetic": "/ˈrʌnˌtaɪm/",
+    "translation": "运行时",
+    "description": "程序运行期间的时间段，也指程序在运行时的环境",
+    "synonyms": ["execution time", "running time"],
+    "antonyms": ["compile time", "design time"]
+}
+
+{
+    "word": "progam",
+    "suggested": "program",
+    "phonetic": "/ˈproʊˌɡræm/",
+    "translation": "程序",
+    "description": "发现可能的拼写错误，已更正为'program'并提供其翻译",
+    "synonyms": ["application", "software"],
+    "antonyms": ["hardware", "equipment"]
+}
+
+Return as a JSON array. For any field that cannot be determined, use null.`;
 
         const chat = this.model.startChat({
             generationConfig: {
