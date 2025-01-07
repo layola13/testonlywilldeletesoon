@@ -1,0 +1,6 @@
+/node_modules
+/ExportedBlueprints_simple
+/simpleProjects
+*.lock
+*meiyijia*
+*.env
