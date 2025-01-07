@@ -100,40 +100,67 @@ Return as a JSON array. For any field that cannot be determined, use null.`;
 
     async processWords() {
         try {
+            // Ensure temp directory exists
+            const tempDir = './dic_temp';
+            await fs.mkdir(tempDir, { recursive: true });
+    
             // Read words file
             const content = await fs.readFile('./cached_words.txt', 'utf-8');
             const words = content.split('\n').filter(word => word.trim());
-
-            // Split into chunks of 100
-            const chunks = [];
-            for (let i = 0; i < words.length; i += 100) {
-                chunks.push(words.slice(i, i + 100));
+    
+            // Find last processed index
+            const tempFiles = await fs.readdir(tempDir);
+            const processedIndices = tempFiles
+                .map(f => parseInt(f.split('.')[0]))
+                .filter(n => !isNaN(n));
+            const startIndex = processedIndices.length ? Math.max(...processedIndices) + 100 : 0;
+    
+            // Process remaining chunks
+            for (let i = startIndex; i < words.length; i += 100) {
+                const chunk = words.slice(i, i + 100);
+                console.log(`Processing chunk ${i/100 + 1}, words ${i}-${i + chunk.length}`);
+                
+                try {
+                    const results = await this.queryGemini(chunk);
+                    
+                    // Save chunk results to temp file
+                    const tempFile = path.join(tempDir, `${i}.json`);
+                    await fs.writeFile(
+                        tempFile,
+                        JSON.stringify(results, null, 2),
+                        'utf-8'
+                    );
+    
+                    // Random delay between requests
+                    await this.sleep(1, 3);
+                } catch (error) {
+                    console.error(`Error processing chunk ${i/100 + 1}:`, error);
+                    continue; // Skip to next chunk on error
+                }
             }
-
+    
+            // Combine all temp files into final result
             const allResults = [];
-
-            // Process each chunk
-            for (let i = 0; i < chunks.length; i++) {
-                console.log(`Processing chunk ${i + 1}/${chunks.length}`);
-                const results = await this.queryGemini(chunks[i]);
-                allResults.push(...results);
-
-                // Random delay between requests
-                await this.sleep(1, 3);
+            const finalTempFiles = await fs.readdir(tempDir);
+            for (const file of finalTempFiles.sort((a, b) => 
+                parseInt(a.split('.')[0]) - parseInt(b.split('.')[0]))) {
+                const content = await fs.readFile(path.join(tempDir, file), 'utf-8');
+                allResults.push(...JSON.parse(content));
             }
-
-            // Save results
+    
+            // Save combined results
             await fs.writeFile(
                 'all_dic.json',
                 JSON.stringify(allResults, null, 2),
                 'utf-8'
             );
-
+    
             console.log("Dictionary processing completed!");
             console.log(`Total words processed: ${allResults.length}`);
-
+    
         } catch (error) {
             console.error("Error processing dictionary:", error);
+            throw error;
         }
     }
 }
